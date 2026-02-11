@@ -62,6 +62,12 @@ create_custom_xaga() {
         apply)
             log_info "Creating custom_xaga.mk and AndroidProducts.mk..."
             
+            # Ensure directory exists
+            if [ ! -d "device/xiaomi/xaga" ]; then
+                log_warn "device/xiaomi/xaga directory missing. Creating it (Make sure you have run repo sync!)"
+                mkdir -p device/xiaomi/xaga
+            fi
+
             # 1. Create custom_xaga.mk
             cat > device/xiaomi/xaga/custom_xaga.mk << 'EOF'
 # Copyright (C) 2024 The PixelOS Project
