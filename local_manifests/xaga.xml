@@ -49,10 +49,16 @@
            remote="xaga"
            revision="sixteen" />
 
-  <!-- Firmware (if needed/available) -->
-  <!-- <project name="android_vendor_firmware"
+  <!-- Firmware -->
+  <project name="android_vendor_xiaomi_xaga-firmware"
            path="vendor/xiaomi/xaga-firmware"
            remote="xaga"
-           revision="sixteen" /> -->
+           revision="sixteen" />
+
+  <!-- MIUI Camera -->
+  <project name="android_vendor_xiaomi_miuicamera"
+           path="vendor/xiaomi/miuicamera"
+           remote="xaga"
+           revision="sixteen" />
 
 </manifest>
