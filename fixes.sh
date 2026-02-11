@@ -208,46 +208,6 @@ create_git_placeholders() {
     esac
 }
 
-# Function to restore vibrator
-restore_vibrator() {
-    local action=$1
-
-    case "$action" in
-        apply)
-            log_info "Restoring vibrator HAL..."
-
-            local files=(
-                "device/xiaomi/mt6895-common/mt6895.mk"
-                "vendor/qcom/opensource/vibrator/excluded-input-devices.xml"
-            )
-
-            for file in "${files[@]}"; do
-                if [ ! -f "$file" ]; then
-                    log_error "$file not found. Please run: repo sync vendor/qcom/opensource/vibrator"
-                    return 1
-                fi
-            done
-
-            log_info "Restored vibrator configuration"
-            ;;
-        undo)
-            log_info "Removing vibrator configuration..."
-
-            local files=(
-                "device/xiaomi/mt6895-common/mt6895.mk"
-                "vendor/qcom/opensource/vibrator/excluded-input-devices.xml"
-            )
-
-            for file in "${files[@]}"; do
-                if [ -f "$file" ]; then
-                    # Note: In a real scenario, we'd restore from git or backup
-                    log_warn "Cannot safely remove $file. Check your backups."
-                fi
-            done
-            log_info "Vibrator configuration noted for review"
-            ;;
-    esac
-}
 
 # Function to add MIUI Camera
 add_miui_camera() {
@@ -319,7 +279,7 @@ main_menu() {
                 apply_wpa_supplicant apply
                 remove_qcom apply
                 create_git_placeholders apply
-                restore_vibrator apply
+
                 add_miui_camera apply
 
                 echo ""
@@ -332,7 +292,7 @@ main_menu() {
                 echo "  2. Apply wpa_supplicant patches"
                 echo "  3. Remove Qualcomm directories"
                 echo "  4. Create git placeholders"
-                echo "  5. Restore vibrator HAL"
+
                 echo "  6. Add MIUI Camera"
                 echo "  0. Back to main menu"
                 echo ""
@@ -343,7 +303,7 @@ main_menu() {
                     2) apply_option "wpa_supplicant patches" apply_wpa_supplicant ;;
                     3) apply_option "Remove Qualcomm directories" remove_qcom ;;
                     4) apply_option "Create git placeholders" create_git_placeholders ;;
-                    5) apply_option "Restore vibrator HAL" restore_vibrator ;;
+
                     6) apply_option "Add MIUI Camera" add_miui_camera ;;
                     0) continue ;;
                 esac
@@ -356,7 +316,7 @@ main_menu() {
                 add_miui_camera undo
                 remove_qcom undo
                 create_git_placeholders undo
-                restore_vibrator undo
+
 
                 echo ""
                 log_warn "Some changes cannot be automatically undone. Check your backups."
@@ -368,7 +328,7 @@ main_menu() {
                 echo "  2. Undo MIUI Camera"
                 echo "  3. Restore Qualcomm directories (requires repo sync)"
                 echo "  4. Remove git placeholders (requires repo sync)"
-                echo "  5. Re-remove vibrator configuration"
+
                 echo "  0. Back to main menu"
                 echo ""
                 read -p "Select fix to undo (0-5): " undo_choice
@@ -378,7 +338,7 @@ main_menu() {
                     2) add_miui_camera undo ;;
                     3) remove_qcom undo ;;
                     4) create_git_placeholders undo ;;
-                    5) restore_vibrator undo ;;
+
                     0) continue ;;
                 esac
                 ;;

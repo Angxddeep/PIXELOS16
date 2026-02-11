@@ -94,21 +94,6 @@ done
 **Impact**: None on functionality. These are empty placeholder repos that satisfy `repo manifest` but contribute no code to the build.
 
 ---
-### 19. ✅ Restored Vibrator HAL (Reverts Entry #10)
-
-**Locations**: `device/xiaomi/mt6895-common/mt6895.mk`, `vendor/qcom/opensource/vibrator/excluded-input-devices.xml`
-
-**Reason**: Entry #10 removed `vendor.qti.hardware.vibrator.service` and `excluded-input-devices.xml` assuming they were Qualcomm-specific. However, the xiaomi-mt6895-devs vendor blobs ship this vibrator HAL service. Removing it caused vibration to stop working entirely and the vibration settings to disappear.
-
-**What was changed**:
-- Restored `PRODUCT_PACKAGES += vendor.qti.hardware.vibrator.service` in `mt6895.mk`
-- Restored `PRODUCT_COPY_FILES` for `excluded-input-devices.xml` in `mt6895.mk`
-- Recreated `vendor/qcom/opensource/vibrator/excluded-input-devices.xml`
-- Removed the `sed` commands from `build-pixelos.sh` that stripped these lines
-
-**Impact**: Vibration now works. Vibration settings restored in Settings app.
-
----
 
 ### 20. ✅ Added MIUI Camera from XagaForge
 
@@ -123,16 +108,3 @@ done
 
 ---
 
-### 22. ✅ Restored Vibrator Source Code (Reverts Entry #4)
-
-**Locations**: `vendor/qcom/opensource/vibrator`
-
-**Reason**: The build failed with `includes non-existent modules in PRODUCT_PACKAGES: vendor.qti.hardware.vibrator.service`. This confirms that the MediaTek device tree expects to build the Qualcomm vibrator HAL from Use, not just use a prebuilt. Entry #4 had deleted this directory.
-
-**What was changed**:
-- Commented out the `rm -rf vendor/qcom/opensource/vibrator` block in `scripts/build-pixelos.sh`.
-- Instructed user to restore the directory via `repo sync`.
-
-**Impact**: Builds can now compile the vibrator HAL service required by the device tree.
-
----
