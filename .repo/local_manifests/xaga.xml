@@ -6,7 +6,7 @@
            remote="github"
            revision="16" />
 
-  <project name="XagaForge/android_device_xiaomi_mt6895-common"
+  <project name="Pixelos-xaga/android_device_xiaomi_mt6895-common"
            path="device/xiaomi/mt6895-common"
            remote="github"
            revision="16" />
