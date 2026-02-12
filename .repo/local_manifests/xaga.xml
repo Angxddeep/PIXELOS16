@@ -40,7 +40,7 @@
            remote="github"
            revision="16" />
 
-  <project name="XagaForge/android_hardware_mediatek"
+  <project name="Pixelos-xaga/android_hardware_mediatek"
            path="hardware/mediatek"
            remote="github"
            revision="16" />
