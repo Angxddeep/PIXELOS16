@@ -12,11 +12,11 @@ FIRMWARE_BRANCH="main" # Assuming main branch, can be adjusted
 FIRMWARE_IMAGES=(
     "apusys.img" "audio_dsp.img" "ccu.img" "dpm.img" "gpueb.img" "gz.img" "lk.img"
     "mcf_ota.img" "mcupm.img" "md1img.img" "mvpu_algo.img" "pi_img.img" "scp.img"
-    "spmfw.img" "sspm.img" "tee.img" "vcp.img" "preloader_xaga.bin"
+    "spmfw.img" "sspm.img" "tee.img" "vcp.img" "dtbo.img" "preloader_raw.img"
 )
 # List of build artifacts to copy from $OUT
 BUILD_ARTIFACTS=(
-    "boot.img" "vendor_boot.img" "dtbo.img" "super.img" "vbmeta.img" "vbmeta_system.img" "vbmeta_vendor.img"
+    "boot.img" "vendor_boot.img" "super.img" "vbmeta.img" "vbmeta_system.img" "vbmeta_vendor.img"
 )
 
 # --- 1. Environment Setup ---
@@ -58,10 +58,22 @@ git clone "$FIRMWARE_REPO" "$TEMP_FIRMWARE_DIR"
 
 echo ">>> Copying firmware images to package..."
 for img in "${FIRMWARE_IMAGES[@]}"; do
-    if [ -f "${TEMP_FIRMWARE_DIR}/${img}" ]; then
-        cp "${TEMP_FIRMWARE_DIR}/${img}" "$IMAGES_DIR/"
+    # Search for the image file recursively within the temp firmware directory
+    IMG_PATH=$(find "$TEMP_FIRMWARE_DIR" -type f -name "$img" | head -n 1)
+    
+    if [ -n "$IMG_PATH" ]; then
+        echo ">>> Found $img at $IMG_PATH"
+        # Rename preloader_raw.img to preloader_xaga.bin if needed
+        if [ "$img" == "preloader_raw.img" ]; then
+            cp "$IMG_PATH" "$IMAGES_DIR/preloader_xaga.bin"
+        else
+            cp "$IMG_PATH" "$IMAGES_DIR/"
+        fi
     else
         echo "WARNING: Firmware image not found: $img"
+        # List files in temp firmware for debugging (limited to first 2 levels)
+        # echo "DEBUG: Listing temp firmware content:"
+        # find "$TEMP_FIRMWARE_DIR" -maxdepth 2
     fi
 done
 
@@ -75,6 +87,8 @@ for img in "${BUILD_ARTIFACTS[@]}"; do
         cp "${OUT_DIR}/${img}" "$IMAGES_DIR/"
     else
         echo "ERROR: Build artifact not found: $img"
+        echo "DEBUG: Listing output directory content matching available images:"
+        ls -1 "$OUT_DIR" | grep -E "img|zip" || echo "No images found in $OUT_DIR"
         exit 1
     fi
 done
