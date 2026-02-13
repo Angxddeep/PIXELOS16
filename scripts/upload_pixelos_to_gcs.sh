@@ -89,7 +89,13 @@ if [ -z "$DEVICE" ]; then
 fi
 
 # Construct the full output path
-FULL_OUT_DIR="${OUT_DIR}/${DEVICE}"
+# Construct the full output path
+# Fix: Check if OUT_DIR already ends with DEVICE to avoid double appending
+if [[ "$OUT_DIR" == *"/$DEVICE" ]]; then
+    FULL_OUT_DIR="$OUT_DIR"
+else
+    FULL_OUT_DIR="${OUT_DIR}/${DEVICE}"
+fi
 
 print_info "Starting PixelOS ROM upload to GCS"
 print_info "Bucket: gs://${BUCKET_NAME}"

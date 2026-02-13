@@ -102,7 +102,9 @@ echo ">>> Fastboot package created: ${OUT_DIR}/${PACKAGE_NAME}.zip"
 # --- 8. Copy OTA ZIP ---
 echo ">>> Handling OTA ZIP..."
 # Find the latest OTA zip
-OTA_ZIP=$(ls Pixelos_${DEVICE}*.zip | grep -v "FASTBOOT" | head -n 1) # Simple check, might need refinement if multiple exist
+# Find the latest OTA zip
+# Use find to avoid errors if no file matches (ls would fail with set -e)
+OTA_ZIP=$(find "$OUT_DIR" -maxdepth 1 -name "Pixelos_${DEVICE}*.zip" ! -name "*FASTBOOT*" -type f | head -n 1)
 if [ -n "$OTA_ZIP" ]; then
     echo ">>> Found OTA ZIP: $OTA_ZIP"
     # It's already in OUT_DIR, so we just acknowledge it.
