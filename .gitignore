@@ -23,4 +23,5 @@ pdk/
 platform_testing/
 toolchain/
 tools/
+!scripts/fastboot/tools/
 test/

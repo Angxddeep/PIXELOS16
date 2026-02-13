@@ -47,14 +47,23 @@ rm -rf "$PACKAGE_DIR"
 mkdir -p "$IMAGES_DIR"
 
 # --- 4. Copy Fastboot Tools and Scripts ---
-echo ">>> Copying fastboot scripts..."
-cp -r scripts/fastboot/* "$PACKAGE_DIR/"
-# Explicitly ensure tools directory is copied if it exists in scripts/fastboot
-if [ -d "scripts/fastboot/tools" ]; then
-    echo ">>> Copying tools directory..."
-    cp -r scripts/fastboot/tools "$PACKAGE_DIR/"
+echo ">>> Copying fastboot scripts to $PACKAGE_DIR..."
+if [ -d "scripts/fastboot" ]; then
+    cp -r scripts/fastboot/. "$PACKAGE_DIR/"
 else
-    echo "WARNING: scripts/fastboot/tools directory not found!"
+    echo "ERROR: scripts/fastboot directory not found!"
+    exit 1
+fi
+
+# Verify tools directory
+if [ -d "$PACKAGE_DIR/tools" ]; then
+    echo ">>> Tools directory verified in package."
+    ls -F "$PACKAGE_DIR/tools"
+else
+    echo "ERROR: tools directory missing in package!"
+    echo "DEBUG: Listing source scripts/fastboot:"
+    ls -F "scripts/fastboot"
+    exit 1
 fi
 
 # --- 5. Fetch and Copy Firmware Images ---
