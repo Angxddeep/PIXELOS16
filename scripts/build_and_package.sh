@@ -108,6 +108,13 @@ if [ "$DO_FASTBOOT" = true ]; then
     echo ">>> Copying fastboot scripts to $PACKAGE_DIR..."
     if [ -d "scripts/fastboot" ]; then
         cp -r scripts/fastboot/. "$PACKAGE_DIR/"
+        # Force CRLF for Windows batch file
+        sed -i 's/$/\r/' "$PACKAGE_DIR/win_installation.bat"
+        echo ">>> Converted win_installation.bat to CRLF"
+        
+        # Verify line endings
+        echo "DEBUG: File type after conversion:"
+        file "$PACKAGE_DIR/win_installation.bat"
     else
         echo "ERROR: scripts/fastboot directory not found!"
         exit 1

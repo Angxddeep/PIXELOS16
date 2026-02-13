@@ -25,3 +25,4 @@ toolchain/
 tools/
 !scripts/fastboot/tools/
 test/
+scripts/1win_installation.bat
