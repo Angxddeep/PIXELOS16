@@ -34,9 +34,7 @@ echo ">>> Build output directory: $OUT_DIR"
 
 # --- 2. Build ---
 echo ">>> Starting build..."
-m pixelos
-echo ">>> generating super.img..."
-m superimage
+m pixelos superimage
 
 # --- 3. Prepare Packaging Directory ---
 TIMESTAMP=$(date +%Y%m%d-%H%M)
