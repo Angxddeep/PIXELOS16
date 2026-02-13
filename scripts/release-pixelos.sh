@@ -43,7 +43,17 @@ echo "Making files public..."
 gsutil -m acl ch -u AllUsers:R ${LATEST_BUILD}boot.img
 gsutil -m acl ch -u AllUsers:R ${LATEST_BUILD}vendor_boot.img
 gsutil -m acl ch -u AllUsers:R ${LATEST_BUILD}PixelOS_xaga*.zip
-gsutil -m acl ch -u AllUsers:R ${LATEST_BUILD}fastboot.zip 2>/dev/null || echo "  (no fastboot.zip found)"
+
+# Find fastboot zip
+FASTBOOT_FILE=$(gsutil ls ${LATEST_BUILD}FASTBOOT*.zip 2>/dev/null | head -n1)
+if [ -n "$FASTBOOT_FILE" ]; then
+  gsutil -m acl ch -u AllUsers:R "$FASTBOOT_FILE"
+  FASTBOOT_FILENAME=$(basename "$FASTBOOT_FILE")
+  FASTBOOT_URL="https://storage.googleapis.com/your-pixelos-builds/xaga/${BUILD_FOLDER}/${FASTBOOT_FILENAME}"
+else
+  echo "  (no fastboot zip found)"
+  FASTBOOT_URL=""
+fi
 
 # Step 4: Get public URLs
 BOOT_URL="https://storage.googleapis.com/your-pixelos-builds/xaga/${BUILD_FOLDER}/boot.img"
@@ -58,13 +68,12 @@ fi
 ROM_FILENAME=$(basename "$ROM_FILE")
 ROM_URL="https://storage.googleapis.com/your-pixelos-builds/xaga/${BUILD_FOLDER}/${ROM_FILENAME}"
 
-FASTBOOT_URL="https://storage.googleapis.com/your-pixelos-builds/xaga/${BUILD_FOLDER}/fastboot.zip"
-
 echo ""
 echo "URLs prepared:"
 echo "  Boot: $BOOT_URL"
 echo "  Vendor Boot: $VENDOR_BOOT_URL"
 echo "  ROM: $ROM_URL"
+echo "  Fastboot: $FASTBOOT_URL"
 echo ""
 
 # Step 5: Get changelog
@@ -78,7 +87,7 @@ fi
 echo ""
 echo "Triggering GitHub release..."
 
-gh workflow run create-release-with-ota.yml \
+if gh workflow run create-release-with-ota.yml \
   -R "$REPO" \
   -f version="$VERSION" \
   -f build_date="$BUILD_DATE" \
@@ -87,11 +96,17 @@ gh workflow run create-release-with-ota.yml \
   -f vendor_boot_img_url="$VENDOR_BOOT_URL" \
   -f rom_zip_url="$ROM_URL" \
   -f fastboot_zip_url="$FASTBOOT_URL" \
-  -f changelog="$CHANGELOG"
-
-echo ""
-echo "✅ Release workflow triggered!"
-echo ""
-echo "Build Folder: $BUILD_FOLDER"
-echo "Check status: https://github.com/$REPO/actions"
-echo "OTA endpoint: https://pixelos-xaga.github.io/pixelos-releases/xaga.json"
+  -f changelog="$CHANGELOG"; then
+    echo ""
+    echo "✅ Release workflow triggered!"
+    echo ""
+    echo "Build Folder: $BUILD_FOLDER"
+    echo "Check status: https://github.com/$REPO/actions"
+    echo "OTA endpoint: https://pixelos-xaga.github.io/pixelos-releases/xaga.json"
+else
+    echo ""
+    echo "❌ Failed to trigger GitHub workflow."
+    echo "Please check your 'gh' authentication and permissions."
+    echo "Try running: gh auth refresh -s workflow"
+    exit 1
+fi
