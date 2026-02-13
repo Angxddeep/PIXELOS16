@@ -67,11 +67,22 @@ case $CHOICE in
         PACKAGE_DIR="${DOWNLOAD_DIR}/${PACKAGE_NAME}"
         mkdir -p "$PACKAGE_DIR"
         
-        # Find and copy OTA ZIP
-        OTA_ZIP=$(find "$OUT_DIR" -maxdepth 1 -name "Pixelos_xaga*.zip" ! -name "*FASTBOOT*" -type f | head -n 1)
+        # Check for multiple OTA ZIPs
+        ZIP_COUNT=$(find "$OUT_DIR" -maxdepth 1 -name "Pixelos_xaga*.zip" ! -name "*FASTBOOT*" -type f | wc -l)
+        if [ "$ZIP_COUNT" -gt 1 ]; then
+            echo ">>> WARNING: Found $ZIP_COUNT recovery ZIPs in $OUT_DIR"
+            echo ">>> Available ZIPs:"
+            find "$OUT_DIR" -maxdepth 1 -name "Pixelos_xaga*.zip" ! -name "*FASTBOOT*" -type f -printf '    %TY-%Tm-%Td %TH:%TM - %f\n' | sort -r
+            echo ">>> Selecting the LATEST one..."
+            echo ""
+        fi
+        
+        # Find and copy LATEST OTA ZIP (by modification time)
+        OTA_ZIP=$(find "$OUT_DIR" -maxdepth 1 -name "Pixelos_xaga*.zip" ! -name "*FASTBOOT*" -type f -printf '%T@ %p\n' | sort -rn | head -n 1 | cut -d' ' -f2-)
         if [ -n "$OTA_ZIP" ]; then
             cp "$OTA_ZIP" "${PACKAGE_DIR}/"
             echo ">>> Copied $(basename $OTA_ZIP) ($(du -h $OTA_ZIP | cut -f1))"
+            echo ">>> Modified: $(date -r $OTA_ZIP '+%Y-%m-%d %H:%M:%S')"
         else
             echo "ERROR: OTA ZIP not found in $OUT_DIR"
             exit 1
