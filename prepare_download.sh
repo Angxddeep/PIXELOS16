@@ -6,6 +6,7 @@ set -e
 # --- Configuration ---
 # Set base directory
 BASE_DIR="$HOME/PIXELOS16"
+GCS_BUCKET="pixelos-downloads-angxddeep"
 
 OUT_DIR="${OUT}"
 if [ -z "$OUT_DIR" ]; then
@@ -133,3 +134,18 @@ echo "============================================"
 
 # Save path for automation
 echo "$FINAL_FILE" > /tmp/pixelos_last_build.txt
+
+# Upload to Google Cloud Storage
+echo ""
+echo ">>> Uploading to Google Cloud Storage..."
+gsutil cp "$FINAL_FILE" "gs://${GCS_BUCKET}/"
+if [ $? -eq 0 ]; then
+    echo ">>> Upload complete!"
+    echo ""
+    echo "=== Download Links ==="
+    echo "GCS Console: https://console.cloud.google.com/storage/browser/${GCS_BUCKET}/"
+    echo "gsutil: gsutil cp gs://${GCS_BUCKET}/$(basename $FINAL_FILE) ."
+else
+    echo ">>> WARNING: Upload failed! Manual upload required:"
+    echo "    gsutil cp $FINAL_FILE gs://${GCS_BUCKET}/"
+fi
