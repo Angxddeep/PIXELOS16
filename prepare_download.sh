@@ -68,17 +68,17 @@ case $CHOICE in
         mkdir -p "$PACKAGE_DIR"
         
         # Check for multiple OTA ZIPs
-        ZIP_COUNT=$(find "$OUT_DIR" -maxdepth 1 -name "Pixelos_xaga*.zip" ! -name "*FASTBOOT*" -type f | wc -l)
+        ZIP_COUNT=$(find "$OUT_DIR" -maxdepth 1 -iname "PixelOS_xaga*.zip" ! -iname "*FASTBOOT*" -type f | wc -l)
         if [ "$ZIP_COUNT" -gt 1 ]; then
             echo ">>> WARNING: Found $ZIP_COUNT recovery ZIPs in $OUT_DIR"
             echo ">>> Available ZIPs:"
-            find "$OUT_DIR" -maxdepth 1 -name "Pixelos_xaga*.zip" ! -name "*FASTBOOT*" -type f -printf '    %TY-%Tm-%Td %TH:%TM - %f\n' | sort -r
+            find "$OUT_DIR" -maxdepth 1 -iname "PixelOS_xaga*.zip" ! -iname "*FASTBOOT*" -type f -printf '    %TY-%Tm-%Td %TH:%TM - %f\n' | sort -r
             echo ">>> Selecting the LATEST one..."
             echo ""
         fi
         
         # Find and copy LATEST OTA ZIP (by modification time)
-        OTA_ZIP=$(find "$OUT_DIR" -maxdepth 1 -name "Pixelos_xaga*.zip" ! -name "*FASTBOOT*" -type f -printf '%T@ %p\n' | sort -rn | head -n 1 | cut -d' ' -f2-)
+        OTA_ZIP=$(find "$OUT_DIR" -maxdepth 1 -iname "PixelOS_xaga*.zip" ! -iname "*FASTBOOT*" -type f -printf '%T@ %p\n' | sort -rn | head -n 1 | cut -d' ' -f2-)
         if [ -n "$OTA_ZIP" ]; then
             cp "$OTA_ZIP" "${PACKAGE_DIR}/"
             echo ">>> Copied $(basename $OTA_ZIP) ($(du -h $OTA_ZIP | cut -f1))"
