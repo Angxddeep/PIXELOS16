@@ -32,7 +32,7 @@ source build/envsetup.sh
 After cloning the device-specific sources, use breakfast to configure the build for your device:
 
 ```bash
-breakfast xaga
+breakfast xaga user
 ```
 
 Start the compilation:
