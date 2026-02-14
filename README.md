@@ -37,6 +37,10 @@ breakfast xaga user
 
 Start the compilation:
 
+```
+make installclean
+```
+
 ```bash
 m pixelos superimage
 ```
