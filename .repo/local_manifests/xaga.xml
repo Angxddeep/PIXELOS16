@@ -29,7 +29,7 @@
 
 
   <!-- Kernel -->
-  <project name="XagaForge/android_kernel_xiaomi_mt6895"
+  <project name="Pixelos-xaga/android_kernel_xiaomi_mt6895"
            path="kernel/xiaomi/mt6895"
            remote="github"
            revision="16" />
