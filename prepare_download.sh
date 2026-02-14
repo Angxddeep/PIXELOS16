@@ -54,13 +54,13 @@ case $CHOICE in
             fi
         done
         
-        # Create tarball
+        # Create ZIP archive
         cd "$DOWNLOAD_DIR"
-        tar -czf "${PACKAGE_NAME}.tar.gz" "${PACKAGE_NAME}"
-        FINAL_FILE="${DOWNLOAD_DIR}/${PACKAGE_NAME}.tar.gz"
+        zip -r "${PACKAGE_NAME}.zip" "${PACKAGE_NAME}"
+        FINAL_FILE="${DOWNLOAD_DIR}/${PACKAGE_NAME}.zip"
         rm -rf "${PACKAGE_NAME}"
         ;;
-        
+
     2)
         echo ">>> Preparing RECOVERY BUILD package..."
         PACKAGE_NAME="recovery_${TIMESTAMP}"
@@ -105,13 +105,13 @@ case $CHOICE in
             exit 1
         fi
         
-        # Create tarball
+        # Create ZIP archive
         cd "$DOWNLOAD_DIR"
-        tar -czf "${PACKAGE_NAME}.tar.gz" "${PACKAGE_NAME}"
-        FINAL_FILE="${DOWNLOAD_DIR}/${PACKAGE_NAME}.tar.gz"
+        zip -r "${PACKAGE_NAME}.zip" "${PACKAGE_NAME}"
+        FINAL_FILE="${DOWNLOAD_DIR}/${PACKAGE_NAME}.zip"
         rm -rf "${PACKAGE_NAME}"
         ;;
-        
+
     *)
         echo "ERROR: Invalid choice. Please select 1 or 2."
         exit 1
