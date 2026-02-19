@@ -1,5 +1,8 @@
 <manifest>
 
+  <remote name="xaga-gitlab"
+          fetch="https://gitlab.com" />
+
   <!-- Device Trees -->
   <project name="Pixelos-xaga/android_device_xiaomi_xaga"
            path="device/xiaomi/xaga"
@@ -51,8 +54,6 @@
 
 
   <!-- MIUI Camera (github) -->
-//  <remote name="xaga-gitlab"
-//          fetch="https://gitlab.com" />
 
   <project name="Pixelos-xaga/proprietary_vendor_xiaomi_miuicamera-xaga"
            path="vendor/xiaomi/miuicamera-xaga"
