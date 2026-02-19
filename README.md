@@ -43,6 +43,7 @@ make installclean
 
 ```bash
 m pixelos superimage
+bash build_xaga.sh --mode ota-extract --sign --generate-keys --keys-dir ~/android-keys
 ```
 
 ```
@@ -55,3 +56,31 @@ cd frameworks/base && bash ../../apply_animation_fixes.sh && git add -A && git c
 The Vibrator HAL (`vendor/qcom/opensource/vibrator`) and its configuration in `device/xiaomi/mt6895-common/mt6895.mk` and `excluded-input-devices.xml` are **REQUIRED** for vibration to work. 
 
 **Do not remove them** even if they appear to be Qualcomm-specific blobs. The MediaTek device tree depends on them for proper vibration functionality.
+
+## OTA Releases Repo
+
+The OTA releases repository is now cloned at:
+
+`pixelos-releases`
+
+Use that repo to host your updater feed file (`updates.json`) and release ZIP links.
+
+### Sample `updates.json`
+
+```json
+{
+  "response": [
+    {
+      "datetime": 1739923200,
+      "filename": "PixelOS_xaga-16.0-20260219-UNOFFICIAL.zip",
+      "id": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "romtype": "UNOFFICIAL",
+      "size": 2684354560,
+      "url": "https://your-domain.example/xaga/PixelOS_xaga-16.0-20260219-UNOFFICIAL.zip",
+      "version": "16.0"
+    }
+  ]
+}
+```
+
+Set the Updater app server URL to the raw/static URL of this JSON file.
