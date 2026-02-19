@@ -4,7 +4,7 @@ set -euo pipefail
 SOURCE_ROOT="$(pwd)"
 STRINGS_FILE="packages/apps/Updater/app/src/main/res/values/strings.xml"
 TARGET_FILE=""
-DEFAULT_UPDATER_URL="https://raw.githubusercontent.com/Angxddeep/pixelos-releases/refs/heads/main/updates.json"
+DEFAULT_UPDATER_URL="https://raw.githubusercontent.com/Pixelos-xaga/pixelos-releases/refs/heads/main/updates.json"
 UPDATER_URL="${DEFAULT_UPDATER_URL}"
 
 usage() {
@@ -12,7 +12,7 @@ usage() {
 Usage: ./set_updater_url.sh [--url <updates-json-url>] [--source-root <path>] [--file <strings.xml path>]
 
 Options:
-  --url <url>     Updater feed URL (default: Angxddeep/pixelos-releases raw updates.json)
+  --url <url>     Updater feed URL (default: Pixelos-xaga/pixelos-releases raw updates.json)
   --source-root <path>
                   Android source root (default: current directory)
   --file <path>   Override target strings.xml path
