@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-set -euo pipefail
+# Keep strict error handling, but avoid nounset because AOSP envsetup/breakfast
+# scripts can reference unset vars (for example TOP) during initialization.
+set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${ROOT_DIR}"
