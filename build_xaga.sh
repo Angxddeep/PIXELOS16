@@ -170,7 +170,7 @@ fi
 PRODUCT_OUT="out/target/product/${DEVICE}"
 TARGET_FILES_DIR="out/target/product/${DEVICE}/obj/PACKAGING/target_files_intermediates"
 
-make_fastboot_package_if_missing() {
+make_fastboot_package_from_current_images() {
   local sign_state="$1"
   local package_dir="out/upload_packages"
   local package_name="PixelOS_${DEVICE}-$(date +%Y%m%d-%H%M)-FASTBOOT-${sign_state}.zip"
@@ -207,7 +207,6 @@ detect_artifacts() {
   OTA_SIGN_STATE="unsigned"
   FASTBOOT_SIGN_STATE="${BUILD_SIGN_STATE}"
   local latest_ota=""
-  local latest_fastboot=""
 
   if [[ -f "out/signed/signed-ota.zip" ]]; then
     OTA_ARTIFACT="out/signed/signed-ota.zip"
@@ -222,20 +221,13 @@ detect_artifacts() {
     fi
   fi
 
-  latest_fastboot="$(ls -1t "${PRODUCT_OUT}"/PixelOS_"${DEVICE}"*FASTBOOT*.zip 2>/dev/null | head -n 1 || true)"
-  if [[ -n "${latest_fastboot}" ]]; then
-    FASTBOOT_ARTIFACT="${latest_fastboot}"
-    if [[ "${FASTBOOT_ARTIFACT}" == *signed* || "${FASTBOOT_ARTIFACT}" == *SIGNED* ]]; then
-      FASTBOOT_SIGN_STATE="signed"
-    elif [[ "${OTA_SIGN_STATE}" == "signed" ]]; then
-      FASTBOOT_SIGN_STATE="signed"
-    fi
-  else
-    if [[ "${OTA_SIGN_STATE}" == "signed" ]]; then
-      FASTBOOT_SIGN_STATE="signed"
-    fi
-    FASTBOOT_ARTIFACT="$(make_fastboot_package_if_missing "${FASTBOOT_SIGN_STATE}" || true)"
+  if [[ "${OTA_SIGN_STATE}" == "signed" ]]; then
+    FASTBOOT_SIGN_STATE="signed"
   fi
+
+  # Always create a fresh fastboot package from current images to match the
+  # current build outputs and avoid reusing stale FASTBOOT zips.
+  FASTBOOT_ARTIFACT="$(make_fastboot_package_from_current_images "${FASTBOOT_SIGN_STATE}" || true)"
 }
 
 upload_artifact() {
