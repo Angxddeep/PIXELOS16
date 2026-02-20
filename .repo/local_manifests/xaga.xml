@@ -52,6 +52,12 @@
            remote="github"
            revision="sixteen-qpr2" />
 
+ <project name="Pixelos-xaga/android_vendor_mediatek_ims"
+         path="vendor/mediatek/ims"
+         remote="github"
+         revision="android-16-qpr2" />
+
+
   <!-- MIUI Camera (github) -->
 
   <project name="Pixelos-xaga/proprietary_vendor_xiaomi_miuicamera-xaga"
