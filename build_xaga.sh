@@ -9,7 +9,8 @@ cd "${ROOT_DIR}"
 DEVICE="xaga"
 VARIANT="user"
 MODE="super"
-JOBS="$(nproc)"
+CPU_COUNT="$(nproc)"
+JOBS="$((CPU_COUNT * 2))"
 KEYS_DIR=""
 SIGN=false
 GENERATE_KEYS=false
@@ -33,7 +34,7 @@ Options:
   --mode <super|ota-extract>   Build mode (default: super)
   --device <codename>          Device codename (default: xaga)
   --variant <user|userdebug>   Build variant (default: user)
-  --jobs <n>                   Parallel jobs for m (default: nproc)
+  --jobs <n>                   Parallel jobs for m (default: 2 * nproc)
   --keys-dir <path>            Release keys dir for signing target-files
   --sign                       Sign OTA/images output (ota-extract mode)
   --generate-keys              Generate missing keys in --keys-dir
@@ -167,7 +168,7 @@ if [[ "${DO_SIGN}" == true && "${UPLOAD_ONLY}" != true ]]; then
 fi
 
 PRODUCT_OUT="out/target/product/${DEVICE}"
-TARGET_FILES_DIR="out/obj/PACKAGING/target_files_intermediates"
+TARGET_FILES_DIR="out/target/product/${DEVICE}/obj/PACKAGING/target_files_intermediates"
 
 make_fastboot_package_if_missing() {
   local sign_state="$1"
