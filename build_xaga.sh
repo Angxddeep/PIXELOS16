@@ -377,8 +377,8 @@ if [[ "${UPLOAD_ONLY}" != true ]]; then
     m -j"${JOBS}" pixelos superimage
     echo "[4/4] Build done. Check ${PRODUCT_OUT}"
   else
-    echo "[3/4] Building target-files and otatools"
-    m -j"${JOBS}" target-files-package otapackage otatools
+    echo "[3/4] Building OTA + fastboot image targets in one pass"
+    m -j"${JOBS}" pixelos superimage target-files-package otapackage otatools
 
     mkdir -p "${PRODUCT_OUT}"
 
