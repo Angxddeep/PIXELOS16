@@ -25,6 +25,11 @@
          remote="github"
          revision="sixteen-qpr1" />
 
+<project name="Pixelos-xaga/android_vendor_lineage-priv_keys"
+         path="vendor/lineage-priv"
+         remote="github"
+         revision="master" />
+
   <!-- Kernel -->
   <project name="xiaomi-mt6895-devs/android_kernel_xiaomi_mt6895"
            path="kernel/xiaomi/mt6895"
