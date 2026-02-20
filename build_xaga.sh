@@ -43,8 +43,8 @@ Options:
   --device <codename>          Device codename (default: xaga)
   --variant <user|userdebug>   Build variant (default: user)
   --jobs <n>                   Parallel jobs for m (default: 2 * nproc)
-  --keys-dir <path>            Release keys dir for signing target-files
-  --sign                       Sign OTA/images output (ota-extract mode)
+  --keys-dir <path>            Release keys dir for inline signing
+  --sign                       Enable PixelOS inline signing
   --generate-keys              Generate missing keys in --keys-dir
   --upload                     Upload detected build artifacts to GCS
   --upload-only                Upload only (skip build)
@@ -141,11 +141,6 @@ if [[ "${UPLOAD_ONLY}" == true ]]; then
   UPLOAD=true
 fi
 
-if [[ "${SIGN}" == true && "${MODE}" != "ota-extract" ]]; then
-  echo "--sign is only supported with --mode ota-extract." >&2
-  exit 1
-fi
-
 if [[ "${SIGN}" == true && -z "${KEYS_DIR}" ]]; then
   KEYS_DIR="${HOME}/android-keys"
 fi
@@ -174,6 +169,33 @@ if [[ "${DO_SIGN}" == true && "${UPLOAD_ONLY}" != true ]]; then
     fi
   done
 fi
+
+prepare_inline_signing_keys() {
+  local inline_keys_dir="vendor/aosp/signing/keys"
+  local key
+  local optional_keys=(
+    testkey
+    testcert
+  )
+
+  if [[ "${DO_SIGN}" != true ]]; then
+    return 0
+  fi
+
+  mkdir -p "${inline_keys_dir}"
+  for key in "${REQUIRED_KEYS[@]}"; do
+    ln -sfn "${KEYS_DIR}/${key}.pk8" "${inline_keys_dir}/${key}.pk8"
+    ln -sfn "${KEYS_DIR}/${key}.x509.pem" "${inline_keys_dir}/${key}.x509.pem"
+  done
+  for key in "${optional_keys[@]}"; do
+    if [[ -f "${KEYS_DIR}/${key}.pk8" && -f "${KEYS_DIR}/${key}.x509.pem" ]]; then
+      ln -sfn "${KEYS_DIR}/${key}.pk8" "${inline_keys_dir}/${key}.pk8"
+      ln -sfn "${KEYS_DIR}/${key}.x509.pem" "${inline_keys_dir}/${key}.x509.pem"
+    fi
+  done
+
+  echo "Inline signing enabled with keys from ${KEYS_DIR} -> ${inline_keys_dir}"
+}
 
 PRODUCT_OUT="out/target/product/${DEVICE}"
 TARGET_FILES_DIR="out/target/product/${DEVICE}/obj/PACKAGING/target_files_intermediates"
@@ -206,30 +228,32 @@ detect_artifacts() {
   FASTBOOT_ARTIFACT=""
   OTA_SIGN_STATE="unsigned"
   FASTBOOT_SIGN_STATE="${BUILD_SIGN_STATE}"
-  local latest_ota=""
-  local candidate
+  local file
+  local candidates=()
+  local newest=""
+  local newest_mtime=0
+  local mtime=0
 
   if [[ -f "out/signed/signed-ota.zip" ]]; then
-    OTA_ARTIFACT="out/signed/signed-ota.zip"
-    OTA_SIGN_STATE="signed"
-  else
-    latest_ota="$(ls -1t "${PRODUCT_OUT}"/PixelOS_"${DEVICE}"*.zip 2>/dev/null | grep -v 'FASTBOOT' | head -n 1 || true)"
-    if [[ -z "${latest_ota}" ]]; then
-      for candidate in \
-        "$(ls -1t out/dist/*"${DEVICE}"*target_files*.zip 2>/dev/null | head -n 1 || true)" \
-        "$(ls -1t out/dist/*"${DEVICE}"*ota*.zip 2>/dev/null | head -n 1 || true)" \
-        "$(ls -1t out/dist/PixelOS_"${DEVICE}"*.zip 2>/dev/null | grep -v 'FASTBOOT' | head -n 1 || true)"; do
-        if [[ -n "${candidate}" ]]; then
-          latest_ota="${candidate}"
-          break
-        fi
-      done
+    candidates+=("out/signed/signed-ota.zip")
+  fi
+  while IFS= read -r file; do
+    candidates+=("${file}")
+  done < <(find "${PRODUCT_OUT}" "out/dist" -maxdepth 2 -type f \( -name "PixelOS_${DEVICE}*.zip" -o -name "*${DEVICE}*ota*.zip" \) ! -name "*FASTBOOT*" ! -name "*target_files*" 2>/dev/null)
+
+  for file in "${candidates[@]}"; do
+    [[ -f "${file}" ]] || continue
+    mtime="$(stat -c %Y "${file}" 2>/dev/null || echo 0)"
+    if [[ "${mtime}" -gt "${newest_mtime}" ]]; then
+      newest_mtime="${mtime}"
+      newest="${file}"
     fi
-    if [[ -n "${latest_ota}" ]]; then
-      OTA_ARTIFACT="${latest_ota}"
-      if [[ "${OTA_ARTIFACT}" == *signed* || "${OTA_ARTIFACT}" == *SIGNED* ]]; then
-        OTA_SIGN_STATE="signed"
-      fi
+  done
+
+  if [[ -n "${newest}" ]]; then
+    OTA_ARTIFACT="${newest}"
+    if [[ "${DO_SIGN}" == true || "${OTA_ARTIFACT}" == *signed* || "${OTA_ARTIFACT}" == *SIGNED* ]]; then
+      OTA_SIGN_STATE="signed"
     fi
   fi
 
@@ -343,6 +367,8 @@ if [[ "${UPLOAD_ONLY}" != true ]]; then
   echo "[1/4] Sourcing build environment"
   source build/envsetup.sh
 
+  prepare_inline_signing_keys
+
   echo "[2/4] Running breakfast ${DEVICE} ${VARIANT}"
   breakfast "${DEVICE}" "${VARIANT}"
 
@@ -352,7 +378,7 @@ if [[ "${UPLOAD_ONLY}" != true ]]; then
     echo "[4/4] Build done. Check ${PRODUCT_OUT}"
   else
     echo "[3/4] Building target-files and otatools"
-    m -j"${JOBS}" target-files-package otatools
+    m -j"${JOBS}" target-files-package otapackage otatools
 
     mkdir -p "${PRODUCT_OUT}"
 
@@ -363,26 +389,7 @@ if [[ "${UPLOAD_ONLY}" != true ]]; then
     fi
 
     EXTRACT_FROM_ZIP="${LATEST_TARGET_FILES}"
-
-    if [[ "${DO_SIGN}" == true ]]; then
-      mkdir -p out/signed
-      SIGNED_TARGET_FILES="out/signed/signed-target_files.zip"
-      SIGNED_OTA="out/signed/signed-ota.zip"
-
-      echo "[4/4] Signing target-files with keys in ${KEYS_DIR}"
-      out/host/linux-x86/bin/sign_target_files_apks -o \
-        -d "${KEYS_DIR}" \
-        "${LATEST_TARGET_FILES}" \
-        "${SIGNED_TARGET_FILES}"
-
-      out/host/linux-x86/bin/ota_from_target_files \
-        -k "${KEYS_DIR}/releasekey" \
-        "${SIGNED_TARGET_FILES}" \
-        "${SIGNED_OTA}"
-
-      EXTRACT_FROM_ZIP="${SIGNED_TARGET_FILES}"
-      BUILD_SIGN_STATE="signed"
-    fi
+    [[ "${DO_SIGN}" == true ]] && BUILD_SIGN_STATE="signed"
 
     EXTRACT_DIR="${PRODUCT_OUT}/images_from_target_files"
     rm -rf "${EXTRACT_DIR}"
