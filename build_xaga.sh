@@ -27,9 +27,10 @@ DO_SIGN=false
 BUILD_SIGN_STATE="unsigned"
 BUILD_NUMBER=""
 FASTBOOT_REQUIRED_IMAGES=(
+  super.img
   boot.img
   vendor_boot.img
-  super.img
+  dtbo.img
   vbmeta.img
   vbmeta_system.img
   vbmeta_vendor.img
@@ -440,7 +441,7 @@ ensure_fastboot_images_present() {
 
   echo "Missing fastboot images after extraction: ${missing[*]}"
   echo "Building missing image targets for fastboot package"
-  m -j"${JOBS}" superimage bootimage vendorbootimage vbmetaimage vbmeta_systemimage vbmeta_vendorimage
+  m -j"${JOBS}" superimage bootimage vendorbootimage dtboimage vbmetaimage vbmeta_systemimage vbmeta_vendorimage
 
   missing=()
   for img in "${FASTBOOT_REQUIRED_IMAGES[@]}"; do
