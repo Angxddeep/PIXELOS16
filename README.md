@@ -42,8 +42,8 @@ make installclean
 ```
 
 ```bash
-m pixelos superimage
-
+source build/envsetup.sh
+export IS_OFFICIAL=true
 bash build_xaga.sh --mode ota-extract --sign --keys-dir ~/android-keys --upload --jobs 40
 
 --variant userdebug
