@@ -21,6 +21,11 @@ UPLOAD_ONLY=false
 GCS_BUCKET="pixelos-downloads-angxddeep"
 GCS_PREFIX="sixteen"
 UPLOAD_SCOPE="both"
+GENERATE_UPDATER_JSON=true
+RELEASES_REPO="${ROOT_DIR}/../pixelos-releases"
+UPDATER_JSON_REL_PATH="updates.json"
+OTA_URL_BASE=""
+ROMTYPE_OVERRIDE=""
 
 PRODUCT_OUT=""
 TARGET_FILES_DIR=""
@@ -29,6 +34,8 @@ FASTBOOT_ARTIFACT=""
 DO_SIGN=false
 BUILD_SIGN_STATE="unsigned"
 BUILD_NUMBER=""
+OTA_PUBLIC_URL=""
+OTA_REMOTE_BASE=""
 FASTBOOT_REQUIRED_IMAGES=(
   super.img
   boot.img
@@ -57,6 +64,13 @@ Options:
   --gcs-prefix <path>          Bucket prefix path (default: sixteen)
   --upload-scope <both|ota|fastboot>
                                Which artifacts to upload (default: both)
+  --generate-updater-json      Auto-generate updater JSON from OTA artifact (default: enabled)
+  --no-generate-updater-json   Disable updater JSON generation
+  --release-repo <path>        OTA feed repo path (default: ../pixelos-releases)
+  --updater-json <relpath>     Output path relative to release repo (default: updates.json)
+  --ota-url-base <url>         Base URL for OTA zip if not uploading (appends OTA filename)
+  --romtype <OFFICIAL|UNOFFICIAL>
+                               Override romtype in generated updater JSON
   -h, --help                   Show this help
 
 Examples:
@@ -67,6 +81,8 @@ Examples:
   ./build_xaga.sh --mode ota-extract --keys-dir vendor/lineage-priv/keys
   ./build_xaga.sh --mode ota-extract --sign --upload --bucket my-bucket
   ./build_xaga.sh --upload-only --bucket my-bucket --upload-scope both
+  ./build_xaga.sh --mode ota-extract --ota-url-base https://sourceforge.net/projects/pixelos-releases/files/sixteen/xaga
+  ./build_xaga.sh --mode ota-extract --updater-json API/updater/xaga.json
 EOF
 }
 
@@ -118,6 +134,30 @@ while [[ $# -gt 0 ]]; do
       ;;
     --upload-scope)
       UPLOAD_SCOPE="$2"
+      shift 2
+      ;;
+    --generate-updater-json)
+      GENERATE_UPDATER_JSON=true
+      shift
+      ;;
+    --no-generate-updater-json)
+      GENERATE_UPDATER_JSON=false
+      shift
+      ;;
+    --release-repo)
+      RELEASES_REPO="$2"
+      shift 2
+      ;;
+    --updater-json)
+      UPDATER_JSON_REL_PATH="$2"
+      shift 2
+      ;;
+    --ota-url-base)
+      OTA_URL_BASE="$2"
+      shift 2
+      ;;
+    --romtype)
+      ROMTYPE_OVERRIDE="$2"
       shift 2
       ;;
     -h|--help)
@@ -347,7 +387,122 @@ upload_artifact() {
   echo "Uploading ${artifact_kind} -> ${remote_path}"
   gsutil cp "${artifact}" "${remote_path}"
   echo "Uploaded: ${remote_path}"
-  echo "Public URL (if bucket/object is public): https://storage.googleapis.com/${GCS_BUCKET}/${remote_base}/$(basename "${artifact}")"
+  local public_url="https://storage.googleapis.com/${GCS_BUCKET}/${remote_base}/$(basename "${artifact}")"
+  echo "Public URL (if bucket/object is public): ${public_url}"
+  if [[ "${artifact_kind}" == "ota" ]]; then
+    OTA_PUBLIC_URL="${public_url}"
+    OTA_REMOTE_BASE="${remote_base}"
+  fi
+}
+
+detect_rom_version_from_ota_name() {
+  local ota_name="$1"
+  if [[ "${ota_name}" =~ -([0-9]+\.[0-9]+)- ]]; then
+    echo "${BASH_REMATCH[1]}"
+    return 0
+  fi
+  if [[ "${ota_name}" =~ -([0-9]+)- ]]; then
+    echo "${BASH_REMATCH[1]}"
+    return 0
+  fi
+  echo "16"
+}
+
+resolve_ota_download_url() {
+  local ota_name="$1"
+  if [[ -n "${OTA_PUBLIC_URL}" ]]; then
+    echo "${OTA_PUBLIC_URL}"
+    return 0
+  fi
+  if [[ -n "${OTA_URL_BASE}" ]]; then
+    echo "${OTA_URL_BASE%/}/${ota_name}"
+    return 0
+  fi
+  return 1
+}
+
+generate_updater_json() {
+  local ota_path="$1"
+  local ota_name=""
+  local ota_size=""
+  local ota_sha256=""
+  local ota_datetime=""
+  local ota_url=""
+  local ota_version=""
+  local romtype=""
+  local output_path=""
+
+  if [[ -z "${ota_path}" || ! -f "${ota_path}" ]]; then
+    echo "Updater JSON generation skipped: OTA artifact not found."
+    return 0
+  fi
+  if [[ ! -d "${RELEASES_REPO}" ]]; then
+    echo "Updater JSON generation skipped: release repo not found at ${RELEASES_REPO}."
+    return 0
+  fi
+
+  ota_name="$(basename "${ota_path}")"
+  ota_size="$(stat -c %s "${ota_path}")"
+  ota_datetime="$(stat -c %Y "${ota_path}")"
+  ota_sha256="$(sha256sum "${ota_path}" | awk '{print $1}')"
+  ota_version="$(detect_rom_version_from_ota_name "${ota_name}")"
+
+  if ! ota_url="$(resolve_ota_download_url "${ota_name}")"; then
+    echo "Updater JSON generation skipped: provide --ota-url-base or use --upload for automatic URL." >&2
+    return 0
+  fi
+
+  if [[ -n "${ROMTYPE_OVERRIDE}" ]]; then
+    romtype="${ROMTYPE_OVERRIDE}"
+  elif [[ "${IS_OFFICIAL:-}" == "true" ]]; then
+    romtype="OFFICIAL"
+  else
+    romtype="UNOFFICIAL"
+  fi
+
+  output_path="${RELEASES_REPO}/${UPDATER_JSON_REL_PATH}"
+  mkdir -p "$(dirname "${output_path}")"
+
+  cat > "${output_path}" <<EOF
+{
+  "response": [
+    {
+      "datetime": "${ota_datetime}",
+      "filename": "${ota_name}",
+      "id": "${ota_sha256}",
+      "romtype": "${romtype}",
+      "size": ${ota_size},
+      "url": "${ota_url}",
+      "version": ${ota_version}
+    }
+  ]
+}
+EOF
+
+  echo "Generated updater JSON: ${output_path}"
+  GENERATED_UPDATER_JSON_PATH="${output_path}"
+}
+
+upload_updater_json_to_ota_folder() {
+  local json_path="$1"
+  local json_name=""
+  local json_remote_path=""
+
+  if [[ -z "${json_path}" || ! -f "${json_path}" ]]; then
+    echo "Updater JSON upload skipped: file not found."
+    return 0
+  fi
+  if [[ -z "${OTA_REMOTE_BASE}" ]]; then
+    echo "Updater JSON upload skipped: OTA remote path is unknown."
+    return 0
+  fi
+
+  json_name="$(basename "${json_path}")"
+  json_remote_path="gs://${GCS_BUCKET}/${OTA_REMOTE_BASE}/${json_name}"
+  echo "Uploading updater JSON -> ${json_remote_path}"
+  gsutil cp "${json_path}" "${json_remote_path}"
+  echo "Uploaded updater JSON: ${json_remote_path}"
+  echo "Updater JSON URL (if public): https://storage.googleapis.com/${GCS_BUCKET}/${OTA_REMOTE_BASE}/${json_name}"
 }
 
 package_fastboot_zip() {
@@ -592,6 +747,14 @@ if [[ "${UPLOAD}" == true ]]; then
   if [[ "${UPLOADED_ANY}" != true ]]; then
     echo "No artifacts were uploaded. Check build outputs and --upload-scope." >&2
     exit 1
+  fi
+fi
+
+if [[ "${GENERATE_UPDATER_JSON}" == true ]]; then
+  detect_artifacts
+  generate_updater_json "${OTA_ARTIFACT:-}"
+  if [[ "${UPLOAD}" == true ]]; then
+    upload_updater_json_to_ota_folder "${GENERATED_UPDATER_JSON_PATH:-}"
   fi
 fi
 

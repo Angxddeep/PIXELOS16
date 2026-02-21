@@ -87,3 +87,30 @@ Use that repo to host your updater feed file (`updates.json`) and release ZIP li
 ```
 
 Set the Updater app server URL to the raw/static URL of this JSON file.
+
+### Auto-generate updater feed after build
+
+`build_xaga.sh` can now auto-generate updater JSON from the built OTA ZIP
+(datetime, filename, sha256, size, URL, version).
+
+Example for official-style per-device feed:
+
+```bash
+export IS_OFFICIAL=true
+bash build_xaga.sh \
+  --mode ota-extract \
+  --sign \
+  --upload \
+  --updater-json API/updater/xaga.json \
+  --release-repo ../pixelos-releases
+```
+
+Without `--upload`, provide a URL base:
+
+```bash
+bash build_xaga.sh \
+  --mode ota-extract \
+  --ota-url-base https://sourceforge.net/projects/pixelos-releases/files/sixteen/xaga \
+  --updater-json API/updater/xaga.json \
+  --release-repo ../pixelos-releases
+```
