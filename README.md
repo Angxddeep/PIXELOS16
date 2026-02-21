@@ -43,6 +43,7 @@ make installclean
 
 ```bash
 m pixelos superimage
+
 bash build_xaga.sh --mode ota-extract --sign --keys-dir ~/android-keys --upload --jobs 40
 
 --variant userdebug
