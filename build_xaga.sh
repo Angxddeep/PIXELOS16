@@ -355,6 +355,11 @@ package_fastboot_zip() {
   local zip_path="${PRODUCT_OUT}/${zip_name}"
   local img
   local missing=()
+  local img_count="${#FASTBOOT_REQUIRED_IMAGES[@]}"
+  local zip_size=""
+
+  echo "[fastboot] Preparing ${zip_name} in ${PRODUCT_OUT}"
+  echo "[fastboot] Checking required images (${img_count} files)"
 
   for img in "${FASTBOOT_REQUIRED_IMAGES[@]}"; do
     if [[ ! -f "${PRODUCT_OUT}/${img}" ]]; then
@@ -363,25 +368,28 @@ package_fastboot_zip() {
   done
 
   if [[ ${#missing[@]} -gt 0 ]]; then
-    echo "Cannot package fastboot.zip; missing images: ${missing[*]}" >&2
+    echo "[fastboot] Cannot package ${zip_name}; missing images: ${missing[*]}" >&2
     return 1
   fi
+  echo "[fastboot] Image check passed"
 
   if ! command -v zip >/dev/null 2>&1; then
-    echo "zip not found. Install zip package to create fastboot.zip." >&2
+    echo "[fastboot] zip not found. Install zip package to create ${zip_name}." >&2
     return 1
   fi
 
   rm -f "${zip_path}"
+  echo "[fastboot] Creating ${zip_name} (compression: -9)"
   if ! (
     cd "${PRODUCT_OUT}"
     zip -q -9 "${zip_name}" "${FASTBOOT_REQUIRED_IMAGES[@]}"
   ); then
-    echo "Failed to create ${zip_path}" >&2
+    echo "[fastboot] Failed to create ${zip_path}" >&2
     return 1
   fi
+  zip_size="$(du -h "${zip_path}" 2>/dev/null | awk '{print $1}')"
   FASTBOOT_ARTIFACT="${zip_path}"
-  echo "Created fastboot artifact: ${FASTBOOT_ARTIFACT}"
+  echo "[fastboot] Created artifact: ${FASTBOOT_ARTIFACT}${zip_size:+ (${zip_size})}"
   return 0
 }
 
