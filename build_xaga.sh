@@ -431,16 +431,12 @@ generate_updater_json() {
   local ota_version=""
   local romtype=""
   local output_path=""
+  local output_dir=""
 
   if [[ -z "${ota_path}" || ! -f "${ota_path}" ]]; then
     echo "Updater JSON generation skipped: OTA artifact not found."
     return 0
   fi
-  if [[ ! -d "${RELEASES_REPO}" ]]; then
-    echo "Updater JSON generation skipped: release repo not found at ${RELEASES_REPO}."
-    return 0
-  fi
-
   ota_name="$(basename "${ota_path}")"
   ota_size="$(stat -c %s "${ota_path}")"
   ota_datetime="$(stat -c %Y "${ota_path}")"
@@ -460,8 +456,17 @@ generate_updater_json() {
     romtype="UNOFFICIAL"
   fi
 
-  output_path="${RELEASES_REPO}/${UPDATER_JSON_REL_PATH}"
-  mkdir -p "$(dirname "${output_path}")"
+  if [[ -d "${RELEASES_REPO}" ]]; then
+    output_path="${RELEASES_REPO}/${UPDATER_JSON_REL_PATH}"
+    output_dir="$(dirname "${output_path}")"
+    echo "Updater JSON output repo: ${RELEASES_REPO}"
+  else
+    output_path="${PRODUCT_OUT}/${UPDATER_JSON_REL_PATH}"
+    output_dir="$(dirname "${output_path}")"
+    echo "Updater JSON release repo not found at ${RELEASES_REPO}."
+    echo "Falling back to local output: ${output_path}"
+  fi
+  mkdir -p "${output_dir}"
 
   cat > "${output_path}" <<EOF
 {
