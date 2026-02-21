@@ -25,6 +25,7 @@ TARGET_FILES_DIR=""
 SIGNED_OTA=""
 DO_SIGN=false
 BUILD_SIGN_STATE="unsigned"
+BUILD_NUMBER=""
 FASTBOOT_REQUIRED_IMAGES=(
   boot.img
   vendor_boot.img
@@ -219,34 +220,11 @@ EOF
 PRODUCT_OUT="out/target/product/${DEVICE}"
 TARGET_FILES_DIR="out/target/product/${DEVICE}/obj/PACKAGING/target_files_intermediates"
 
-make_fastboot_package_from_current_images() {
-  local sign_state="$1"
-  local package_dir="out/upload_packages"
-  local package_name="PixelOS_${DEVICE}-$(date +%Y%m%d-%H%M)-FASTBOOT-${sign_state}.zip"
-  local package_path="${package_dir}/${package_name}"
-  local img
-
-  mkdir -p "${package_dir}"
-  for img in "${FASTBOOT_REQUIRED_IMAGES[@]}"; do
-    if [[ ! -f "${PRODUCT_OUT}/${img}" ]]; then
-      return 1
-    fi
-  done
-
-  (
-    cd "${PRODUCT_OUT}"
-    zip -q -j "${ROOT_DIR}/${package_path}" "${FASTBOOT_REQUIRED_IMAGES[@]}"
-  )
-
-  echo "${package_path}"
-  return 0
-}
-
 detect_artifacts() {
   OTA_ARTIFACT=""
-  FASTBOOT_ARTIFACT=""
   OTA_SIGN_STATE="unsigned"
   FASTBOOT_SIGN_STATE="${BUILD_SIGN_STATE}"
+  BUILD_NUMBER=""
   local file
   local candidates=()
   local newest=""
@@ -280,15 +258,21 @@ detect_artifacts() {
     FASTBOOT_SIGN_STATE="signed"
   fi
 
-  # Always create a fresh fastboot package from current images to match the
-  # current build outputs and avoid reusing stale FASTBOOT zips.
-  FASTBOOT_ARTIFACT="$(make_fastboot_package_from_current_images "${FASTBOOT_SIGN_STATE}" || true)"
+  if [[ -n "${OTA_ARTIFACT}" ]]; then
+    local ota_base
+    ota_base="$(basename "${OTA_ARTIFACT}")"
+    if [[ "${ota_base}" =~ ([0-9]{8}-[0-9]{4}) ]]; then
+      BUILD_NUMBER="${BASH_REMATCH[1]}"
+    elif [[ "${ota_base}" =~ ([0-9]{8}) ]]; then
+      BUILD_NUMBER="${BASH_REMATCH[1]}"
+    fi
+  fi
+  [[ -n "${BUILD_NUMBER}" ]] || BUILD_NUMBER="$(date +%Y%m%d-%H%M)"
 }
 
 upload_artifact() {
   local artifact="$1"
   local artifact_kind="$2"
-  local sign_state="$3"
   local remote_base
   local remote_path
 
@@ -300,15 +284,45 @@ upload_artifact() {
     return 1
   fi
 
-  remote_base="${GCS_PREFIX}/${DEVICE}/${artifact_kind}/${sign_state}"
+  remote_base="${GCS_PREFIX}/${DEVICE}/${BUILD_NUMBER}/${artifact_kind}"
   remote_base="${remote_base#/}"
   remote_base="${remote_base%/}"
   remote_path="gs://${GCS_BUCKET}/${remote_base}/$(basename "${artifact}")"
 
-  echo "Uploading ${artifact_kind} (${sign_state}) -> ${remote_path}"
+  echo "Uploading ${artifact_kind} -> ${remote_path}"
   gsutil cp "${artifact}" "${remote_path}"
   echo "Uploaded: ${remote_path}"
   echo "Public URL (if bucket/object is public): https://storage.googleapis.com/${GCS_BUCKET}/${remote_base}/$(basename "${artifact}")"
+}
+
+upload_fastboot_images() {
+  local remote_base
+  local remote_path
+  local img
+  local uploaded_count=0
+
+  remote_base="${GCS_PREFIX}/${DEVICE}/${BUILD_NUMBER}/fastboot"
+  remote_base="${remote_base#/}"
+  remote_base="${remote_base%/}"
+
+  for img in "${FASTBOOT_REQUIRED_IMAGES[@]}"; do
+    if [[ ! -f "${PRODUCT_OUT}/${img}" ]]; then
+      echo "Missing fastboot image: ${PRODUCT_OUT}/${img}" >&2
+      return 1
+    fi
+    remote_path="gs://${GCS_BUCKET}/${remote_base}/${img}"
+    echo "Uploading fastboot image -> ${remote_path}"
+    gsutil cp "${PRODUCT_OUT}/${img}" "${remote_path}"
+    echo "Uploaded: ${remote_path}"
+    uploaded_count=$((uploaded_count + 1))
+  done
+  if [[ "${uploaded_count}" -eq 0 ]]; then
+    echo "No fastboot images found in required list." >&2
+    return 1
+  fi
+
+  echo "Uploaded ${uploaded_count} fastboot images to gs://${GCS_BUCKET}/${remote_base}/"
+  return 0
 }
 
 find_latest_target_files_zip() {
@@ -342,6 +356,72 @@ find_latest_target_files_zip() {
   [[ -n "${newest}" ]] || return 1
   echo "${newest}"
   return 0
+}
+
+have_sha256_tool() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    return 0
+  fi
+  if command -v shasum >/dev/null 2>&1; then
+    return 0
+  fi
+  return 1
+}
+
+sha256_file() {
+  local file="$1"
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "${file}" | awk '{print $1}'
+  else
+    shasum -a 256 "${file}" | awk '{print $1}'
+  fi
+}
+
+sha256_stdin() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum | awk '{print $1}'
+  else
+    shasum -a 256 | awk '{print $1}'
+  fi
+}
+
+verify_superimage_hash_match() {
+  local target_files_zip="$1"
+  local local_super="${PRODUCT_OUT}/super.img"
+  local local_hash
+  local zip_hash
+
+  if [[ ! -f "${local_super}" ]]; then
+    echo "Hash check skipped: ${local_super} not found." >&2
+    return 1
+  fi
+  if [[ -z "${target_files_zip}" || ! -f "${target_files_zip}" ]]; then
+    echo "Hash check skipped: target-files zip not found." >&2
+    return 1
+  fi
+  if ! unzip -l "${target_files_zip}" "IMAGES/super.img" >/dev/null 2>&1; then
+    echo "Hash check skipped: IMAGES/super.img not found in ${target_files_zip}." >&2
+    return 1
+  fi
+
+  if ! have_sha256_tool; then
+    echo "Hash check skipped: neither sha256sum nor shasum is available." >&2
+    return 1
+  fi
+
+  local_hash="$(sha256_file "${local_super}")"
+  zip_hash="$(unzip -p "${target_files_zip}" "IMAGES/super.img" | sha256_stdin)"
+
+  echo "super.img SHA256 (product_out): ${local_hash}"
+  echo "super.img SHA256 (target_files): ${zip_hash}"
+
+  if [[ -n "${local_hash}" && "${local_hash}" == "${zip_hash}" ]]; then
+    echo "super.img hash check: MATCH"
+    return 0
+  fi
+
+  echo "super.img hash check: MISMATCH" >&2
+  return 1
 }
 
 ensure_fastboot_images_present() {
@@ -400,29 +480,46 @@ if [[ "${UPLOAD_ONLY}" != true ]]; then
     m -j"${JOBS}" pixelos superimage target-files-package otapackage otatools
 
     mkdir -p "${PRODUCT_OUT}"
-
+    [[ "${DO_SIGN}" == true ]] && BUILD_SIGN_STATE="signed"
     LATEST_TARGET_FILES="$(find_latest_target_files_zip || true)"
-    if [[ -z "${LATEST_TARGET_FILES}" ]]; then
-      echo "Could not find target-files zip. Searched: ${TARGET_FILES_DIR}, ${PRODUCT_OUT}/obj/PACKAGING/target_files_intermediates, out/dist" >&2
-      exit 1
+
+    missing_fastboot_images=()
+    for img in "${FASTBOOT_REQUIRED_IMAGES[@]}"; do
+      if [[ ! -f "${PRODUCT_OUT}/${img}" ]]; then
+        missing_fastboot_images+=("${img}")
+      fi
+    done
+
+    if [[ ${#missing_fastboot_images[@]} -gt 0 ]]; then
+      if [[ -z "${LATEST_TARGET_FILES}" ]]; then
+        echo "Could not find target-files zip for fallback extraction. Missing images: ${missing_fastboot_images[*]}" >&2
+        echo "Searched: ${TARGET_FILES_DIR}, ${PRODUCT_OUT}/obj/PACKAGING/target_files_intermediates, out/dist" >&2
+        exit 1
+      fi
+
+      EXTRACT_FROM_ZIP="${LATEST_TARGET_FILES}"
+      EXTRACT_DIR="${PRODUCT_OUT}/images_from_target_files"
+      rm -rf "${EXTRACT_DIR}"
+      mkdir -p "${EXTRACT_DIR}"
+
+      echo "Missing fastboot images from direct build (${missing_fastboot_images[*]})."
+      echo "Fallback: extracting IMAGES/*.img from ${EXTRACT_FROM_ZIP}"
+      unzip -oj "${EXTRACT_FROM_ZIP}" "IMAGES/*.img" -d "${EXTRACT_DIR}" >/dev/null
+
+      echo "Copying extracted images into ${PRODUCT_OUT}"
+      cp -af "${EXTRACT_DIR}"/*.img "${PRODUCT_OUT}/"
+    else
+      echo "Fastboot images already present in ${PRODUCT_OUT}; skipping target-files image extraction."
     fi
 
-    EXTRACT_FROM_ZIP="${LATEST_TARGET_FILES}"
-    [[ "${DO_SIGN}" == true ]] && BUILD_SIGN_STATE="signed"
-
-    EXTRACT_DIR="${PRODUCT_OUT}/images_from_target_files"
-    rm -rf "${EXTRACT_DIR}"
-    mkdir -p "${EXTRACT_DIR}"
-
-    echo "Extracting IMAGES/*.img from: ${EXTRACT_FROM_ZIP}"
-    unzip -oj "${EXTRACT_FROM_ZIP}" "IMAGES/*.img" -d "${EXTRACT_DIR}" >/dev/null
-
-    echo "Copying extracted images into ${PRODUCT_OUT}"
-    cp -af "${EXTRACT_DIR}"/*.img "${PRODUCT_OUT}/"
-
-    [[ "${DO_SIGN}" == true ]] && BUILD_SIGN_STATE="signed"
-
     ensure_fastboot_images_present
+
+    if [[ -z "${LATEST_TARGET_FILES}" ]]; then
+      echo "Could not find target-files zip for super.img hash verification." >&2
+      echo "Searched: ${TARGET_FILES_DIR}, ${PRODUCT_OUT}/obj/PACKAGING/target_files_intermediates, out/dist" >&2
+      exit 1
+    fi
+    verify_superimage_hash_match "${LATEST_TARGET_FILES}"
   fi
 fi
 
@@ -438,17 +535,17 @@ if [[ "${UPLOAD}" == true ]]; then
 
   if [[ "${UPLOAD_SCOPE}" == "both" || "${UPLOAD_SCOPE}" == "ota" ]]; then
     if [[ -n "${OTA_ARTIFACT:-}" ]]; then
-      upload_artifact "${OTA_ARTIFACT}" "ota" "${OTA_SIGN_STATE}" && UPLOADED_ANY=true
+      upload_artifact "${OTA_ARTIFACT}" "ota" && UPLOADED_ANY=true
     else
       echo "No OTA artifact detected; skipped OTA upload."
     fi
   fi
 
   if [[ "${UPLOAD_SCOPE}" == "both" || "${UPLOAD_SCOPE}" == "fastboot" ]]; then
-    if [[ -n "${FASTBOOT_ARTIFACT:-}" ]]; then
-      upload_artifact "${FASTBOOT_ARTIFACT}" "fastboot" "${FASTBOOT_SIGN_STATE}" && UPLOADED_ANY=true
+    if upload_fastboot_images; then
+      UPLOADED_ANY=true
     else
-      echo "No fastboot artifact detected; skipped fastboot upload."
+      echo "No fastboot images detected; skipped fastboot upload."
     fi
   fi
 
