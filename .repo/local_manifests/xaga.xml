@@ -1,0 +1,68 @@
+<manifest>
+
+  <remote name="xaga-gitlab"
+          fetch="https://gitlab.com" />
+
+  <!-- Device Trees -->
+  <project name="Pixelos-xaga/android_device_xiaomi_xaga"
+           path="device/xiaomi/xaga"
+           remote="github"
+           revision="sixteen-qpr2" />
+
+  <project name="Pixelos-xaga/android_device_xiaomi_mt6895-common"
+           path="device/xiaomi/mt6895-common"
+           remote="github"
+           revision="sixteen-qpr2" />
+
+<!-- Vendor -->
+<project name="Pixelos-xaga/android_vendor_xiaomi_mt6895-common"
+         path="vendor/xiaomi/mt6895-common"
+         remote="github"
+         revision="sixteen-qpr2" />
+
+<project name="priiii08918/android_vendor_xiaomi_xaga"
+         path="vendor/xiaomi/xaga"
+         remote="xaga-gitlab"
+         revision="16.2" />
+
+<project name="Pixelos-xaga/android_vendor_lineage-priv_keys"
+         path="vendor/lineage-priv/keys"
+         remote="github"
+         revision="master" />
+
+  <!-- Kernel -->
+  <project name="XagaForge/android_kernel_xiaomi_mt6895"
+           path="kernel/xiaomi/mt6895"
+           remote="github"
+           revision="16.2" />
+
+  <!-- MediaTek / Hardware -->
+  <project name="Pixelos-xaga/android_device_mediatek_sepolicy_vndr"
+           path="device/mediatek/sepolicy_vndr"
+           remote="github"
+           revision="sixteen-qpr2" />
+
+  <project name="Pixelos-xaga/android_hardware_mediatek"
+           path="hardware/mediatek"
+           remote="github"
+           revision="sixteen-qpr2" />
+
+  <project name="PixelOS-AOSP/android_hardware_xiaomi"
+           path="hardware/xiaomi"
+           remote="github"
+           revision="sixteen-qpr2" />
+
+ <project name="Pixelos-xaga/android_vendor_mediatek_ims"
+         path="vendor/mediatek/ims"
+         remote="github"
+         revision="android-16-qpr2" />
+
+
+  <!-- MIUI Camera (github) -->
+
+  <project name="Pixelos-xaga/proprietary_vendor_xiaomi_miuicamera-xaga"
+           path="vendor/xiaomi/miuicamera-xaga"
+           remote="github"
+           revision="main" />
+
+</manifest>
