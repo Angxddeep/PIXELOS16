@@ -330,7 +330,11 @@ detect_artifacts() {
   fi
   while IFS= read -r file; do
     candidates+=("${file}")
-  done < <(find "${PRODUCT_OUT}" "out/dist" "out/signed" -maxdepth 2 -type f \( -name "PixelOS_${DEVICE}*.zip" -o -name "PIXELOS_*.zip" -o -name "*${DEVICE}*ota*.zip" \) ! -name "*FASTBOOT*" ! -name "*target_files*" 2>/dev/null)
+  done < <(find "${PRODUCT_OUT}" "out/dist" "out/signed" -maxdepth 2 -type f \( -name "PixelOS_${DEVICE}*.zip" -o -name "PIXELOS_*.zip" -o -name "*${DEVICE}*ota*.zip" \) ! -name "*FASTBOOT*" ! -name "*target_files*" ! -name "custom_*" 2>/dev/null)
+
+  if [[ ${#candidates[@]} -gt 0 ]]; then
+    echo "Found ${#candidates[@]} OTA candidate(s), selecting latest by modification time:"
+  fi
 
   for file in "${candidates[@]}"; do
     [[ -f "${file}" ]] || continue
@@ -339,10 +343,12 @@ detect_artifacts() {
       newest_mtime="${mtime}"
       newest="${file}"
     fi
+    echo "  - ${file} (mtime: ${mtime})"
   done
 
   if [[ -n "${newest}" ]]; then
     OTA_ARTIFACT="${newest}"
+    echo "Selected latest OTA artifact: ${OTA_ARTIFACT}"
     if [[ "${DO_SIGN}" == true || "${OTA_ARTIFACT}" == *signed* || "${OTA_ARTIFACT}" == *SIGNED* ]]; then
       OTA_SIGN_STATE="signed"
     fi
