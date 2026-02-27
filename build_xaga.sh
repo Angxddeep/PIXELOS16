@@ -336,6 +336,7 @@ EOF
 
 PRODUCT_OUT="out/target/product/${DEVICE}"
 TARGET_FILES_DIR="out/target/product/${DEVICE}/obj/PACKAGING/target_files_intermediates"
+RELEASE_DIR="${ROOT_DIR}/out/release/${DEVICE}"
 
 detect_artifacts() {
   OTA_ARTIFACT=""
@@ -386,7 +387,7 @@ detect_artifacts() {
   fi
   while IFS= read -r file; do
     fastboot_candidates+=("${file}")
-  done < <(find "${PRODUCT_OUT}" "out/dist" -maxdepth 2 -type f \( -name "*fastboot*.zip" -o -name "*FASTBOOT*.zip" \) ! -name "*target_files*" 2>/dev/null)
+  done < <(find "${PRODUCT_OUT}" "out/dist" "${RELEASE_DIR}" -maxdepth 2 -type f \( -name "*fastboot*.zip" -o -name "*FASTBOOT*.zip" \) ! -name "*target_files*" 2>/dev/null)
 
   for file in "${fastboot_candidates[@]}"; do
     [[ -f "${file}" ]] || continue
@@ -676,7 +677,6 @@ upload_ota_companion_images() {
   local staged_path=""
   local remote_path=""
   local uploaded_any=false
-  local release_dir="${ROOT_DIR}/out/release/${DEVICE}"
 
   if [[ -z "${OTA_REMOTE_BASE}" ]]; then
     echo "OTA companion upload skipped: OTA remote path is unknown."
@@ -684,14 +684,14 @@ upload_ota_companion_images() {
   fi
 
   prepare_ota_companion_images || true
-  mkdir -p "${release_dir}"
+  mkdir -p "${RELEASE_DIR}"
 
   for img in "${OTA_COMPANION_IMAGES[@]}"; do
     if ! source_path="$(resolve_ota_companion_image_path "${img}")"; then
       echo "OTA companion upload skipped (${img}): source image not found."
       continue
     fi
-    staged_path="${release_dir}/${img}"
+    staged_path="${RELEASE_DIR}/${img}"
     cp -f "${source_path}" "${staged_path}"
 
     remote_path="gs://${GCS_BUCKET}/${OTA_REMOTE_BASE}/${img}"
@@ -754,7 +754,6 @@ prepare_fastboot_package_images() {
 
 create_fastboot_zip_artifact() {
   local build_id=""
-  local release_dir=""
   local stage_dir=""
   local zip_name=""
   local zip_path=""
@@ -769,10 +768,9 @@ create_fastboot_zip_artifact() {
 
   build_id="${BUILD_NUMBER:-$(date +%Y%m%d-%H%M)}"
   BUILD_NUMBER="${build_id}"
-  release_dir="${ROOT_DIR}/out/release/${DEVICE}"
-  stage_dir="${release_dir}/fastboot-${build_id}"
+  stage_dir="${RELEASE_DIR}/fastboot-${build_id}"
   zip_name="PIXELOS_${DEVICE}-${build_id}_FASTBOOT.zip"
-  zip_path="${release_dir}/${zip_name}"
+  zip_path="${RELEASE_DIR}/${zip_name}"
 
   prepare_fastboot_package_images "${LATEST_TARGET_FILES:-}" || return 1
 
@@ -917,8 +915,8 @@ if [[ "${UPLOAD_ONLY}" != true ]]; then
     echo "[3/4] Building OTA + fastboot image targets in one pass"
     m -j"${JOBS}" pixelos superimage target-files-package otapackage otatools
 
-    mkdir -p "${PRODUCT_OUT}"
     [[ "${DO_SIGN}" == true ]] && BUILD_SIGN_STATE="signed"
+    detect_artifacts
     LATEST_TARGET_FILES="$(find_latest_target_files_zip || true)"
 
     ensure_fastboot_images_present
@@ -926,7 +924,7 @@ if [[ "${UPLOAD_ONLY}" != true ]]; then
     extract_superimage_from_target_files "${LATEST_TARGET_FILES}"
     prepare_fastboot_package_images "${LATEST_TARGET_FILES}"
     create_fastboot_zip_artifact
-    echo "[4/4] OTA + fastboot zip prepared. Check ${PRODUCT_OUT} and ${ROOT_DIR}/out/release/${DEVICE}"
+    echo "[4/4] OTA + fastboot zip prepared. Check ${PRODUCT_OUT} and ${RELEASE_DIR}"
   else
     echo "[3/4] Building OTA package targets only"
     m -j"${JOBS}" pixelos target-files-package otapackage otatools
