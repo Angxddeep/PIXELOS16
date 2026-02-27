@@ -759,6 +759,8 @@ create_fastboot_zip_artifact() {
   local zip_name=""
   local zip_path=""
   local img
+  local total_images=0
+  local current_index=0
 
   if ! command -v zip >/dev/null 2>&1; then
     echo "zip command not found. Install zip to create fastboot package." >&2
@@ -776,14 +778,18 @@ create_fastboot_zip_artifact() {
 
   rm -rf "${stage_dir}"
   mkdir -p "${stage_dir}"
+  total_images="${#FASTBOOT_PACKAGE_IMAGES[@]}"
   for img in "${FASTBOOT_PACKAGE_IMAGES[@]}"; do
+    current_index="$((current_index + 1))"
+    echo "[fastboot-zip] staging (${current_index}/${total_images}): ${img}"
     cp -f "${PRODUCT_OUT}/${img}" "${stage_dir}/${img}"
   done
 
   rm -f "${zip_path}"
+  echo "[fastboot-zip] creating archive: ${zip_path}"
   (
     cd "${stage_dir}"
-    zip -q -r "${zip_path}" ./*
+    zip -r "${zip_path}" ./*
   )
   rm -rf "${stage_dir}"
 
