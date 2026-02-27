@@ -38,6 +38,11 @@ breakfast xaga user
 ```
 m fb_package pixelos 
 ```
+```
+export TERM=xterm-256color
+tmux new -s mysession
+tmux attach -t mysession
+```
 
 
 Start the compilation:
