@@ -9,16 +9,16 @@
            remote="github"
            revision="sixteen-qpr2" />
 
-  <project name="Pixelos-xaga/android_device_xiaomi_mt6895-common"
+  <project name="XagaForge/android_device_xiaomi_mt6895-common"
            path="device/xiaomi/mt6895-common"
            remote="github"
-           revision="sixteen-qpr2" />
+           revision="16.2" />
 
 <!-- Vendor -->
 <project name="Pixelos-xaga/android_vendor_xiaomi_mt6895-common"
          path="vendor/xiaomi/mt6895-common"
          remote="github"
-         revision="sixteen-qpr2" />
+         revision="16.2" />
 
 <project name="priiii08918/android_vendor_xiaomi_xaga"
          path="vendor/xiaomi/xaga"
@@ -37,32 +37,26 @@
            revision="16.2" />
 
   <!-- MediaTek / Hardware -->
-  <project name="Pixelos-xaga/android_device_mediatek_sepolicy_vndr"
+  <project name="XagaForge/android_device_mediatek_sepolicy_vndr"
            path="device/mediatek/sepolicy_vndr"
            remote="github"
-           revision="sixteen-qpr2" />
+           revision="16.2" />
 
-  <project name="Pixelos-xaga/android_hardware_mediatek"
+  <project name="XagaForge/android_hardware_mediatek"
            path="hardware/mediatek"
            remote="github"
-           revision="sixteen-qpr2" />
+           revision="16.2" />
 
   <project name="PixelOS-AOSP/android_hardware_xiaomi"
            path="hardware/xiaomi"
            remote="github"
            revision="sixteen-qpr2" />
 
-  <project name="Pixelos-xaga/android_vendor_mediatek_ims"
-         path="vendor/mediatek/ims"
-         remote="github"
-         revision="android-16-qpr2" />
-
-
   <!-- MIUI Camera (github) -->
 
-  <project name="Pixelos-xaga/proprietary_vendor_xiaomi_miuicamera-xaga"
+  <project name="priiii08918/proprietary_vendor_xiaomi_miuicamera-xaga"
            path="vendor/xiaomi/miuicamera-xaga"
-           remote="github"
-           revision="main" />
+           remote="xaga-gitlab"
+           revision="16.2" />
 
 </manifest>
