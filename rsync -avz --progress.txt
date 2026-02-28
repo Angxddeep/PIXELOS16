@@ -1,0 +1,3 @@
+rsync -avz --progress \
+  angxddeep@34.93.254.82:/home/angxddeep/PIXELOS16/out/target/product/xaga/{boot.img,vbmeta.img,dtbo.img,vendor_boot.img,PixelOS_xaga-16.2-20260228-1202.zip} \
+  .

@@ -27,6 +27,7 @@ Initialize the ROM build environment by sourcing the envsetup.sh script:
 
 ```bash
 source build/envsetup.sh
+export IS_OFFICIAL=true
 ```
 
 After cloning the device-specific sources, use breakfast to configure the build for your device:
